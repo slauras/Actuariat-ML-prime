@@ -2,6 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+
+import plotly.express as px
+import plotly.graph_objects as go
+
 from sklearn.metrics import (
     r2_score, mean_absolute_error, mean_squared_error,
     classification_report, confusion_matrix, roc_curve,
@@ -10,8 +14,32 @@ from sklearn.metrics import (
 
 
 
-import plotly.express as px
 
+def plot_law_density(data, dist_theoretical, dist_name):
+    fig = px.histogram(data, nbins=200, histnorm='probability density', opacity=0.6, )
+    fig.data[0].name = "CHARGE (> 0)"
+    
+    # Courbe de densité fittée
+    x = np.linspace(data.min(), data.max(), 500)
+    y = dist_theoretical.pdf(x)
+    fig.add_trace(go.Scatter(x=x, y=y, mode='lines', name=f'{dist_name} fit', line=dict(color='red', width=2)))
+
+    fig.update_layout(title=f"Loi {dist_name} ajustée (sur notre variable d'intérêt)", yaxis_title="Densité", xaxis_title="y")
+    fig.show()
+
+def plot_law_qq(data, dist_theoretical, dist_name):
+    # Trier les données
+    data_sorted = np.sort(data)
+    n = len(data_sorted)
+    # Quantiles théoriques de la loi Gamma ajustée
+    probs = (np.arange(1, n+1) - 0.5) / n
+    gamma_theoretical = dist_theoretical.ppf(probs)
+
+    fig_qq = go.Figure()
+    fig_qq.add_trace(go.Scatter(x=gamma_theoretical, y=data_sorted, mode='markers', name='QQ plot'))
+    fig_qq.add_trace(go.Scatter(x=gamma_theoretical, y=gamma_theoretical, mode='lines', name='y=x', line=dict(color='red', dash='dash')))
+    fig_qq.update_layout(title="QQ plot (Gamma)", xaxis_title="Quantiles théoriques", yaxis_title="Quantiles empiriques")
+    fig_qq.show()
 
 def plot_classification_metrics(experience_name, y_true, y_pred, y_proba):
     
