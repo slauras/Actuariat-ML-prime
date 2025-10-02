@@ -5,14 +5,17 @@
 - exporation des données : Done
 - Data engineering : Done
 - Visualisations : Done
-- Pipeline de models (entrainement + grid search) : quasiment
+- estimation de la loi (Gamma) de y : Done
+- Pipeline de models (entrainement + grid search) : Done (optionnel)
+- HPO  (Optuna) : N.A. (Optionnel)
 - Selection des typologie de modèles : En cours
   - Tester et intégrer :
-    - Xgboost ou catboost
+    - Xgboost  : Done
     - finetuner un random forest
     - finetuner un modèle linéaire
-  - intégrer l'entrainement simultané des modèles
+  - intégrer l'entrainement simultané des modèles : Done
+  - Logger et visualisateur de performances : Done
 - benchmark final et conclusion : N.A.
-- HPO  (Optuna) : N.A.
 
-Avancée estimée : 70%
+
+Avancée estimée : 85%
