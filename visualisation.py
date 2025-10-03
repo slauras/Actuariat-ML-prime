@@ -10,10 +10,12 @@ from scipy.stats import gaussian_kde
 import plotly.express as px
 import plotly.graph_objects as go
 
+
 from sklearn.metrics import (
+    
     r2_score, mean_absolute_error, root_mean_squared_error,
     classification_report, confusion_matrix, roc_curve,
-    precision_recall_curve, roc_auc_score
+    ConfusionMatrixDisplay, precision_recall_curve, roc_auc_score
 )
 
 
@@ -47,46 +49,65 @@ def plot_law_qq(data, dist_theoretical, dist_name):
     fig_qq.show()
 
 
+###### Classification plots
 
-def plot_classification_metrics(experience_name, y_true, y_pred, y_proba):
-    
-    print(f"### Rapport de classification [{experience_name}] : \n", classification_report(y_true, y_pred))
+def plot_confusion_matrix(y_true, y_pred, ax: Axes=None, model_name=None):
     cm = confusion_matrix(y_true, y_pred)
-    
-    fpr, tpr, thresholds = roc_curve(y_true, y_proba)
-    roc_auc = roc_auc_score(y_true, y_proba)
-    
-    precision, recall, pr_thresholds = precision_recall_curve(y_true, y_proba)
-    
-    precision = precision[:-1] #if precision.shape[0] > y_pred.shape[0] else precision
-    recall = recall[:-1]# if recall.shape[0] > y_pred.shape[0] else recall
+    if ax is None:
+        fig, ax = plt.subplots()
+        
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Classe 0", "Classe 1"])
+    disp.plot(ax=ax, cmap="Reds", colorbar=True)
+    ax.set_xlabel("Prédictions")
+    ax.set_ylabel("Vraie Classe")
+    ax.set_title("Matrice de Confusion" + (f": {model_name}" if model_name else ""))
+    if ax is None:
+        plt.tight_layout()
+        plt.show()
 
-    fig, axs = plt.subplots(1, 3, figsize=(12, 4))
-
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=axs[0],
-                xticklabels=["Classe 0", "Classe 1"], yticklabels=["Classe 0", "Classe 1"])
-    axs[0].set_xlabel("Prédictions")
-    axs[0].set_ylabel("Vraie Classe")
-    axs[0].set_title("Matrice de Confusion")
-
-    axs[1].plot(fpr, tpr, color="blue", lw=2, label=f"Roc curve (AUC = {roc_auc:.2f})")
-    axs[1].plot([0, 1], [0, 1], color="grey", linestyle="--", lw=1)
+def plot_roc_curve(fpr, tpr, thresholds, roc_auc, ax: Axes=None, model_name=None):
+    if ax is None:
+        fig, ax = plt.subplots()
+    ax.plot(fpr, tpr, color="darkred", lw=2, label=f"Roc curve (AUC = {roc_auc:.2f})")
+    ax.plot([0, 1], [0, 1], color="grey", linestyle="--", lw=1)
     for i in range(0, len(thresholds), max(1, len(thresholds) // 10)):
-        axs[1].annotate(f"{thresholds[i]:.2f}", (fpr[i], tpr[i]), fontsize=8, color="red")
-    axs[1].set_xlabel("Taux de Faux Positifs (FPR)")
-    axs[1].set_ylabel("Taux de Vrais Positifs (TPR)")
-    axs[1].set_title("Courbe ROC avec Thresholds")
-    axs[1].legend()
-    axs[1].grid()
+        ax.annotate(f"{thresholds[i]:.2f}", (fpr[i], tpr[i]), fontsize=8, color="red")
+    ax.set_xlabel("Taux de Faux Positifs (FPR)")
+    ax.set_ylabel("Taux de Vrais Positifs (TPR)")
+    ax.set_title("Courbe ROC avec Thresholds" + (f": {model_name}" if model_name else ""))
+    ax.legend()
+    ax.grid()
+    if ax is None:
+        plt.tight_layout()
+        plt.show()
 
-    axs[2].plot(pr_thresholds, recall, color='orange', label='Recall')
-    axs[2].plot(pr_thresholds, precision, color='blue', label='Precision')
-    axs[2].axvline(x=0.5, color='grey', linestyle='--', label='Seuil à 0.5')
-    axs[2].set_xlabel("Seuil de confiance")
-    axs[2].set_ylabel("Recall ou Precision")
-    axs[2].set_title("Courbe Rappel/Confiance")
-    axs[2].legend()
+def plot_precision_recall_curve(pr_thresholds, precision, recall, ax: Axes=None, model_name=None):
+    if ax is None:
+        fig, ax = plt.subplots()
+    ax.plot(pr_thresholds, recall, color='orange', label='Recall')
+    ax.plot(pr_thresholds, precision, color='darkred', label='Precision')
+    ax.axvline(x=0.5, color='grey', linestyle='--', label='Seuil à 0.5')
+    ax.set_xlabel("Seuil de confiance")
+    ax.set_ylabel("Recall ou Precision")
+    ax.set_title("Courbe Rappel/Confiance" + (f" : {model_name}" if model_name else ""))
+    ax.legend()
+    ax.grid()
+    if ax is None:
+        plt.tight_layout()
+        plt.show()
 
+def plot_classification_diagnostics(y_true, y_score, model_name, threshold=0.5):
+    y_preds = (y_score > threshold).astype(int)
+    fpr, tpr, thresholds = roc_curve(y_true, y_score)
+    roc_auc = roc_auc_score(y_true, y_score)
+    precision, recall, pr_thresholds = precision_recall_curve(y_true, y_score)
+    precision = precision[:-1]
+    recall = recall[:-1]
+    fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+    plot_confusion_matrix(y_true, y_preds, ax=axs[0])
+    plot_roc_curve(fpr, tpr, thresholds, roc_auc, ax=axs[1])
+    plot_precision_recall_curve(pr_thresholds, precision, recall, ax=axs[2])
+    fig.suptitle(f"Diagnostic classification : {model_name}", fontsize=14)
     plt.tight_layout()
     plt.show()
 
@@ -334,8 +355,8 @@ def plot_regression_diagnostics(y_true, y_pred, fold_loss, fold_metrics, model_n
     fig, axs = plt.subplots(2, 2, figsize=(11, 8))
     qq_plot(y_true, y_pred, ax=axs[0, 0])
     plot_scatter(y_true, y_pred, ax=axs[0, 1])
-    plot_fold_loss(fold_loss, ax=axs[1, 0])
-    plot_metric_table(fold_metrics, ax=axs[1, 1])
+    plot_metric_table(fold_metrics, ax=axs[1, 0])
+    plot_fold_loss(fold_loss, ax=axs[1, 1]) if fold_loss else axs[1, 1].axis('off')
     fig.suptitle(f"Diagnostic de régression : {model_name}", fontsize=16)
     plt.tight_layout()
     plt.show()

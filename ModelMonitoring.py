@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 
 from visualisation import (
-    plot_regression_diagnostics
+    plot_regression_diagnostics,
+    plot_classification_diagnostics
 )
 
 from sklearn.metrics import (
@@ -71,12 +72,21 @@ class ModelMonitoring:
         
     
     def plot_regression_diagnostics(self):
-        if self.aggregated_truth.nunique() < 10:
+        if np.unique(self.aggregated_truth).size < 10:
             raise ValueError("Not a regression problem. Please use classification diagnostics.")
         plot_regression_diagnostics(
             self.aggregated_truth, 
             self.aggregated_preds, 
             self.fold_loss, 
             self.fold_metrics,
+            self.model_name
+        )
+        
+    def plot_classification_diagnostics(self):
+        if np.unique(self.aggregated_truth).size >= 10:
+            raise ValueError("Not a classification problem. Please use regression diagnostics.")
+        plot_classification_diagnostics(
+            self.aggregated_truth,
+            self.aggregated_preds,
             self.model_name
         )
