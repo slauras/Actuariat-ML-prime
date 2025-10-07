@@ -82,11 +82,12 @@ class ModelMonitoring:
             self.model_name
         )
         
-    def plot_classification_diagnostics(self):
+    def plot_classification_diagnostics(self, threshold=0.5):
         if np.unique(self.aggregated_truth).size >= 10:
             raise ValueError("Not a classification problem. Please use regression diagnostics.")
         plot_classification_diagnostics(
             self.aggregated_truth,
             self.aggregated_preds,
-            self.model_name
+            self.model_name,
+            threshold
         )

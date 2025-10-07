@@ -49,17 +49,51 @@ def plot_law_qq(data, dist_theoretical, dist_name):
     fig_qq.show()
 
 
+def plot_importance(importance_df, model_name=None):
+
+    fig, ax = plt.subplots(1, 2, figsize=(12, 6)) 
+
+    importance_df['innit_feature'] = importance_df['Feature'].apply(lambda x: '_'.join(x.split('_')[:-1]))
+
+    # 2. Grouper par "variable_initiale" et calculer les stats
+    df_grouped = importance_df.groupby('innit_feature')['Importance'].agg(['mean', 'median', 'max']).reset_index()
+    importance_df["Importance"] = importance_df["Importance"].abs()
+
+
+    importance_mean_df = df_grouped.reindex(df_grouped['mean'].abs().sort_values(ascending=False).index).head(30)
+    sns.barplot(x='mean', y='innit_feature', data=importance_mean_df, hue='innit_feature', palette='viridis', ax=ax[0])
+    ax[0].set_title('Importance des Features moyennes', fontsize=16)
+    ax[0].set_xlabel('Gain moyen', fontsize=14)
+    ax[0].set_ylabel('Feature', fontsize=14)
+
+
+    importance_df = importance_df.sort_values(by="Importance", ascending=False).head(30)
+    sns.barplot(x='Importance', y='Feature', data=importance_df, hue='innit_feature', palette='husl', ax=ax[1])
+    ax[1].set_title('Importance des modalitées', fontsize=16)
+    ax[1].set_xlabel('Gain (en valeur absolue)', fontsize=14)
+    ax[1].set_ylabel('Modalité', fontsize=14)
+
+    # importance_median_df = df_grouped.sort_values(by="median", ascending=False).head(30)
+    # sns.barplot(x='median', y='innit_feature', data=importance_median_df, hue='innit_feature', palette='viridis', ax=ax[0])
+    # ax[0].set_title('Importance des Features max ()', fontsize=16)
+    # ax[0].set_xlabel('Gain moyen', fontsize=14)
+    # ax[0].set_ylabel('Feature', fontsize=14)
+
+    fig.suptitle("coeficients ou gain des variables"+ (f" : {model_name}" if model_name else ""), fontsize=16)
+
+    plt.tight_layout()
+    plt.show()
 ###### Classification plots
 
 def plot_confusion_matrix(y_true, y_pred, ax: Axes=None, model_name=None):
-    cm = confusion_matrix(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred).T
     if ax is None:
         fig, ax = plt.subplots()
         
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Classe 0", "Classe 1"])
     disp.plot(ax=ax, cmap="Reds", colorbar=True)
-    ax.set_xlabel("Prédictions")
-    ax.set_ylabel("Vraie Classe")
+    ax.set_xlabel("Vraie Classe")
+    ax.set_ylabel("Prédictions")
     ax.set_title("Matrice de Confusion" + (f": {model_name}" if model_name else ""))
     if ax is None:
         plt.tight_layout()
@@ -81,12 +115,12 @@ def plot_roc_curve(fpr, tpr, thresholds, roc_auc, ax: Axes=None, model_name=None
         plt.tight_layout()
         plt.show()
 
-def plot_precision_recall_curve(pr_thresholds, precision, recall, ax: Axes=None, model_name=None):
+def plot_precision_recall_curve(pr_thresholds, precision, recall, threshold, ax: Axes=None, model_name=None):
     if ax is None:
         fig, ax = plt.subplots()
     ax.plot(pr_thresholds, recall, color='orange', label='Recall')
     ax.plot(pr_thresholds, precision, color='darkred', label='Precision')
-    ax.axvline(x=0.5, color='grey', linestyle='--', label='Seuil à 0.5')
+    ax.axvline(x=threshold, color='grey', linestyle='--', label=f'Seuil à {threshold}')
     ax.set_xlabel("Seuil de confiance")
     ax.set_ylabel("Recall ou Precision")
     ax.set_title("Courbe Rappel/Confiance" + (f" : {model_name}" if model_name else ""))
@@ -106,169 +140,15 @@ def plot_classification_diagnostics(y_true, y_score, model_name, threshold=0.5):
     fig, axs = plt.subplots(1, 3, figsize=(12, 4))
     plot_confusion_matrix(y_true, y_preds, ax=axs[0])
     plot_roc_curve(fpr, tpr, thresholds, roc_auc, ax=axs[1])
-    plot_precision_recall_curve(pr_thresholds, precision, recall, ax=axs[2])
+    plot_precision_recall_curve(pr_thresholds, precision, recall, threshold, ax=axs[2])
     fig.suptitle(f"Diagnostic classification : {model_name}", fontsize=14)
     plt.tight_layout()
     plt.show()
-
-
-
-# def qqplot_plotly(x, y, title="QQ Plot"):
-#     """
-#     Trace un QQ-plot entre deux séries avec plotly express.
-#     x : valeurs observées
-#     y : valeurs prédites
-#     """
-#     x_sorted = np.sort(x)
-#     y_sorted = np.sort(y)
-#     min_len = min(len(x_sorted), len(y_sorted))
-#     df = pd.DataFrame({
-#         "Observed": x_sorted[:min_len],
-#         "Predicted": y_sorted[:min_len]
-#     })
-#     fig = px.scatter(df, x="Observed", y="Predicted", title=title)
-#     fig.add_shape(
-#         type="line",
-#         x0=df["Observed"].min(), y0=df["Predicted"].min(),
-#         x1=df["Observed"].max(), y1=df["Predicted"].max(),
-#         line=dict(color="red", dash="dash"),
-#         name="y=x"
-#     )
-#     fig.update_layout(showlegend=False)
-#     fig.show()
-    
     
 
-# def qq_plot(y_true, y_pred, model_name):
+###### Regression plots
 
-#     quantiles = np.linspace(0, 1, min(len(y_true), len(y_pred)))
-#     q_true = np.quantile(y_true, quantiles)
-#     q_pred = np.quantile(y_pred, quantiles)
-
-#     # Calculer la densité pour chaque point
-#     xy = np.vstack([q_true, q_pred])
-#     z = gaussian_kde(xy)(xy)
-
-#     plt.figure(figsize=(4, 3))
-#     sc = plt.scatter(q_true, q_pred, c=z, cmap='gist_heat', s=10) 
-#     max_val = max(q_true.max(), q_pred.max())
-#     plt.plot([0, max_val], [0, max_val], color='red', linestyle='--', label='y=x')
-#     plt.xlabel("Quantiles réels")
-#     plt.ylabel("Quantiles prédits")
-#     plt.title(f"QQ Plot : {model_name}")
-#     plt.legend()
-#     plt.grid(True)
-#     plt.colorbar(sc, label='Densité', ticks=[])
-#     plt.show()
-    
-# def qqplot_plotly2(true, pred, title="QQ-Plot"):
-#     # Remove NaN and sort
-#     true = np.asarray(true)
-#     pred = np.asarray(pred)
-#     mask = ~np.isnan(true) & ~np.isnan(pred)
-#     true_sorted = np.sort(true[mask])
-#     pred_sorted = np.sort(pred[mask])
-#     n = min(len(true_sorted), len(pred_sorted))
-#     true_sorted = true_sorted[:n]
-#     pred_sorted = pred_sorted[:n]
-    
-#     fig = go.Figure()
-#     fig.add_trace(go.Scatter(
-#         x=true_sorted,
-#         y=pred_sorted,
-#         mode='markers',
-#         name='Quantiles'
-#     ))
-#     fig.add_trace(go.Scatter(
-#         x=[true_sorted[0], true_sorted[-1]],
-#         y=[true_sorted[0], true_sorted[-1]],
-#         mode='lines',
-#         name='y=x',
-#         line=dict(color='red', dash='dash')
-#     ))
-#     fig.update_layout(
-#         title=title,
-#         xaxis_title='Quantiles réels',
-#         yaxis_title='Quantiles prédits',
-#         width=700,
-#         height=500
-#     )
-#     fig.show()
-    
-
-# def plot_scatter(y_true, y_pred, model_name):
-#     # Calculer la densité pour chaque point
-#     xy = np.vstack([y_true, y_pred])
-#     z = gaussian_kde(xy)(xy)
-    
-#     plt.figure(figsize=(4, 3))
-#     sc = plt.scatter(y_true, y_pred,  c=z, cmap='gist_heat', s=10)
-#     plt.xlabel("Valeurs réelles")
-#     plt.ylabel("Prédictions")
-#     plt.title(f"Scatter plot : {model_name}")
-#     plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'r--', label='y = x')
-#     plt.legend()
-#     plt.colorbar(sc, label='Densité', ticks=[])
-#     plt.show()
-    
-
-# def plot_aggregated_loss(aggregated_loss, model_name):
-#     train_data, eval_data = aggregated_loss
-#     plt.figure(figsize=(6, 4))
-#     plt.plot(train_data, label='Mean Train RMSE')
-#     plt.plot(eval_data, label='Mean Valid RMSE')
-#     plt.title(f'Evolution moyenne des loss : {model_name}')
-#     plt.xlabel('Itération')
-#     plt.ylabel('RMSE')
-#     plt.legend()
-#     plt.show()
-
-# def plot_fold_loss(fold_loss, model_name):
-#     plt.figure(figsize=(6, 4))
-#     colors = sns.color_palette("tab10", n_colors=len(fold_loss))
-#     for i, (train_data, eval_data) in enumerate(fold_loss):
-#         plt.plot(train_data, label=f'Fold {i+1}: Train', color=colors[i])
-#         plt.plot(eval_data, label=f'Fold {i+1}: Valid', color=colors[i], linestyle='--', alpha=0.7)
-#     plt.title(f'Evolution de la loss par fold : {model_name}')
-#     plt.xlabel('Itération')
-#     plt.ylabel('RMSE')
-#     plt.legend()
-#     plt.show()
-    
-# def plot_metric_table(fold_metrics, model_name):
-#     df_metrics = pd.DataFrame(fold_metrics).T
-#     df_metrics.columns = [f"Fold {i+1}" for i in range(df_metrics.shape[1])]
-#     df_metrics["Moyenne"] = df_metrics.mean(axis=1).round(2)
-#     df_metrics["Ecart-type"] = df_metrics.drop(columns=["Moyenne"]).std(axis=1).round(2)
-    
-#     fig, ax = plt.subplots(figsize=(5, 4 ))
-#     # Définir les couleurs pour chaque colonne
-#     cell_colors = []
-#     for i in range(len(df_metrics)):
-#         row = []
-#         for j in range(df_metrics.shape[1]):
-#             if j >= df_metrics.shape[1] - 2:
-#                 row.append('#f8d7da')  # rouge clair pour Moyenne et Ecart-type
-#             else:
-#                 row.append("#dadee3")  # gris clair pour les folds
-#         cell_colors.append(row)
-
-#     # Afficher le tableau
-#     table = ax.table(
-#         cellText=np.round(df_metrics.values, 2),
-#         rowLabels=df_metrics.index,
-#         colLabels=df_metrics.columns,
-#         cellColours=cell_colors,
-#         loc='center'
-#     )
-#     table.auto_set_font_size(False)
-#     table.set_fontsize(10)
-#     table.scale(1.2, 1.2)
-#     ax.axis('off')
-#     plt.title(f"Métriques : {model_name}")
-#     plt.show()
-
-def qq_plot(y_true, y_pred, model_name=None, ax:Axes = None):
+def plot_qq(y_true, y_pred, model_name=None, ax:Axes = None):
     quantiles = np.linspace(0, 1, min(len(y_true), len(y_pred)))
     q_true = np.quantile(y_true, quantiles)
     q_pred = np.quantile(y_pred, quantiles)
@@ -320,7 +200,47 @@ def plot_fold_loss(fold_loss, model_name=None, ax:Axes = None):
         plt.tight_layout()
         plt.show()
 
-def plot_metric_table(fold_metrics, model_name=None, ax:Axes = None):
+def plot_kde_distribution(y_true, y_pred, model_name=None, ax:Axes = None):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(7, 4))
+    sns.kdeplot(y_true, label='Vraies valeurs', ax=ax, color='blue')
+    sns.kdeplot(y_pred, label='Prédictions', ax=ax, color='red')
+    ax.set_title('Densité (kde) true vs pred' + (f" : {model_name}" if model_name else ""))
+    ax.set_xlabel('Valeur (échelle log)')
+    ax.set_ylabel('Densité')
+    ax.set_xscale('log')
+    ax.legend()
+    if ax is None:
+        plt.tight_layout()
+        plt.show()
+
+def plot_metric_table(y_true, y_pred, model_name=None, ax:Axes = None):
+    metrics = {
+        "R2": r2_score(y_true, y_pred),
+        "MAE": mean_absolute_error(y_true, y_pred),
+        "RMSE": root_mean_squared_error(y_true, y_pred),
+        "ratio": round((y_true.sum() / y_pred.sum()), 3)
+    }
+    df_metrics = pd.DataFrame.from_dict(metrics, orient='index', columns=['Valeur']).round(3)
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(1, 2))
+    cell_colors = [['#dadee3'] for _ in range(len(df_metrics))]
+    table = ax.table(
+        cellText=df_metrics.values,
+        rowLabels=df_metrics.index,
+        colLabels=df_metrics.columns,
+        cellColours=cell_colors,
+        loc='center'
+    )
+    table.auto_set_font_size(True)
+    # table.set_fontsize(10)
+    table.scale(1.2, 1.2)
+    ax.axis('off')
+    ax.set_title(f"Métriques globales" + (f" : {model_name}" if model_name else ""))
+    if ax is None:
+        plt.show()
+
+def plot_fold_metric_table(fold_metrics, model_name=None, ax:Axes = None):
     df_metrics = pd.DataFrame(fold_metrics).T
     df_metrics.columns = [f"Fold {i+1}" for i in range(df_metrics.shape[1])]
     df_metrics["Moyenne"] = df_metrics.mean(axis=1).round(2)
@@ -351,13 +271,23 @@ def plot_metric_table(fold_metrics, model_name=None, ax:Axes = None):
     if ax is None:
         plt.show()
 
-def plot_regression_diagnostics(y_true, y_pred, fold_loss, fold_metrics, model_name):
-    fig, axs = plt.subplots(2, 2, figsize=(11, 8))
-    qq_plot(y_true, y_pred, ax=axs[0, 0])
-    plot_scatter(y_true, y_pred, ax=axs[0, 1])
-    plot_metric_table(fold_metrics, ax=axs[1, 0])
-    plot_fold_loss(fold_loss, ax=axs[1, 1]) if fold_loss else axs[1, 1].axis('off')
-    fig.suptitle(f"Diagnostic de régression : {model_name}", fontsize=16)
+def plot_regression_diagnostics(y_true, y_pred, fold_loss=None, fold_metrics=None, model_name=None):
+    if fold_metrics is None and fold_loss is None:
+        fig, axs = plt.subplots(2, 2, figsize=(11, 8))
+        plot_qq(y_true, y_pred, ax=axs[0, 0])
+        plot_scatter(y_true, y_pred, ax=axs[0, 1])
+        plot_kde_distribution(y_true[y_true<5000], y_pred[y_true<5000], ax=axs[1, 0])
+        plot_metric_table(y_true, y_pred, ax=axs[1, 1])
+        fig.suptitle(f"Diagnostic de régression" + (f" : {model_name}" if model_name else ""), fontsize=16)
+
+    else:
+        fig, axs = plt.subplots(2, 2, figsize=(11, 8))
+        plot_qq(y_true, y_pred, ax=axs[0, 0])
+        plot_scatter(y_true, y_pred, ax=axs[0, 1])
+        plot_fold_metric_table(fold_metrics, ax=axs[1, 0])
+        plot_fold_loss(fold_loss, ax=axs[1, 1]) if fold_loss else axs[1, 1].axis('off')
+        
+    fig.suptitle(f"Diagnostic de régression" + (f" : {model_name}" if model_name else ""), fontsize=16)
     plt.tight_layout()
     plt.show()
     
